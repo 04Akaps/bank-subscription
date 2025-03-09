@@ -1,0 +1,23 @@
+kafka:
+  info:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: my-consumer-group
+      auto-offset-reset: earliest
+      auto-commit: false
+  topics:
+    transactions:
+      pollInterval: 1000
+      concurrency: 3
+      maxPollRecords: 500
+      enabled: true
+
+logging:
+  level:
+    org.apache.kafka: WARN
+    org.springframework.kafka: INFO
+    org.apache.kafka.clients.NetworkClient: ERROR
+    org.apache.kafka.common.network.Selector: ERROR
+    org.apache.kafka.clients.consumer: WARN
+    org.apache.kafka.clients.Metadata: WARN
+    org.example.consumer.ConsumerFactory: INFO
