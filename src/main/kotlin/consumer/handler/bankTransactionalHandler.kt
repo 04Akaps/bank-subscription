@@ -12,6 +12,9 @@ import org.springframework.stereotype.Component
 class BankTransactionalHandler(
     private val logger: Logger = LoggerFactory.getLogger(BankTransactionalHandler::class.java)
 ) : MessageHandler {
+
+    // objectId 값의 유효성을 위해 동기처리로 변경
+    @Synchronized
     override fun handle(record: ConsumerRecord<String, Any>, acknowledgment: Acknowledgment) {
         try {
             val message = record.value()

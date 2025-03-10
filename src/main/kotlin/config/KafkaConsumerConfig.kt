@@ -1,20 +1,24 @@
 package org.example.config
 
-import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.common.protocol.Message
 import org.apache.kafka.common.serialization.StringDeserializer
+import org.example.consumer.ConsumerFactory
 import org.example.consumer.handler.BankTransactionalHandler
 import org.example.interfaces.MessageHandler
 import org.example.types.dto.KafkaTopicMaps
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.kafka.annotation.EnableKafka
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory
-import org.springframework.kafka.core.ConsumerFactory
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory
+import org.springframework.kafka.listener.AcknowledgingMessageListener
 import org.springframework.kafka.listener.ContainerProperties
-import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+import org.springframework.kafka.support.Acknowledgment
 import org.springframework.kafka.support.serializer.JsonDeserializer
 
 @EnableKafka
@@ -23,6 +27,7 @@ import org.springframework.kafka.support.serializer.JsonDeserializer
 class KafkaConsumerConfig(
     private val topicConfig: TopicConfig,
     private val bankTransactionalHandler: BankTransactionalHandler,
+    private val logger : Logger = LoggerFactory.getLogger(KafkaConsumerConfig::class.java)
 ) {
 
     @Bean
@@ -62,52 +67,35 @@ class KafkaConsumerConfig(
         return props
     }
 
-    @Bean
-    fun consumerBaseConfigs(): Map<String, Any> {
-        return mapOf(
-            ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG to topicConfig.info.bootstrapServers,
-            ConsumerConfig.GROUP_ID_CONFIG to topicConfig.info.consumer.groupId,
-            ConsumerConfig.AUTO_OFFSET_RESET_CONFIG to topicConfig.info.consumer.autoOffsetReset,
-            ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
-            ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to JsonDeserializer::class.java,
-            ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS to ErrorHandlingDeserializer::class.java,
-            ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG to topicConfig.info.consumer.autoCommit
-        )
-    }
 
-    @Bean
-    fun kafkaTopicMaps(): KafkaTopicMaps {
-        val handlers = mutableMapOf<String, MessageHandler>()
+    @Bean(name = ["factoryHandlerMapper"])
+    fun kafkaListenerContainerFactories(): Map<String, ConcurrentKafkaListenerContainerFactory<String, Any>> {
         val factories = mutableMapOf<String, ConcurrentKafkaListenerContainerFactory<String, Any>>()
 
         topicConfig.topics.forEach { (topicName, properties) ->
             if (properties.enabled) {
+                var handler : MessageHandler
+
                 when(topicName) {
-                    "transactions" -> handlers[topicName] = bankTransactionalHandler
+                    "transactions" -> handler = bankTransactionalHandler
                     // 더 많은 핸들러 매핑...
                     else ->{
                         throw RuntimeException("Topic [$topicName] not supported yet")
                     }
                 }
 
-                factories[topicName] = createKafkaListenerContainerFactory(properties)
+                factories[topicName] = createKafkaListenerContainerFactory(topicName, handler, properties)
             }
         }
 
-        return KafkaTopicMaps(handlers, factories)
+        return factories
     }
 
-    @Bean(name = ["topicHandlerMapper"])
-    fun handlerMap(): Map<String, MessageHandler> {
-        return kafkaTopicMaps().handlerMap
-    }
 
-    @Bean(name = ["factoryHandlerMapper"])
-    fun kafkaListenerContainerFactories(): Map<String, ConcurrentKafkaListenerContainerFactory<String, Any>> {
-        return kafkaTopicMaps().factoryMap
-    }
 
     private fun createKafkaListenerContainerFactory(
+        topicName : String,
+        handler : MessageHandler,
         properties: TopicProperties
     ): ConcurrentKafkaListenerContainerFactory<String, Any> {
         val configs = consumerConfigs().toMutableMap()
@@ -122,6 +110,20 @@ class KafkaConsumerConfig(
         factory.setAutoStartup(true)
         factory.containerProperties.pollTimeout = properties.pollInterval
 
+        val container = factory.createContainer(topicName)
+
+        container.setupMessageListener(AcknowledgingMessageListener { record, acknowledgment ->
+            try {
+                if (acknowledgment != null) {
+                    handler.handle(record, acknowledgment)
+                }
+            } catch (e: Exception) {
+                logger.error("Error processing record", e)
+                // TODO 메시지 처리 실패 로직 (재시도나 DLQ 전송 등을 구현)
+            }
+        })
+
         return factory
     }
+
 }
