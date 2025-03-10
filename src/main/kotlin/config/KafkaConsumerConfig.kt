@@ -85,6 +85,9 @@ class KafkaConsumerConfig(
                 when(topicName) {
                     "transactions" -> handlers[topicName] = bankTransactionalHandler
                     // 더 많은 핸들러 매핑...
+                    else ->{
+                        throw RuntimeException("Topic [$topicName] not supported yet")
+                    }
                 }
 
                 factories[topicName] = createKafkaListenerContainerFactory(properties)

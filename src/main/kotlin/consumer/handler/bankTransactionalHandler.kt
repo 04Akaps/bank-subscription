@@ -3,14 +3,15 @@ package org.example.consumer.handler
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.example.interfaces.MessageHandler
 import org.example.types.dto.TransactionsMessage
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.kafka.support.Acknowledgment
 import org.springframework.stereotype.Component
 
 @Component
-class BankTransactionalHandler : MessageHandler {
-    private val logger = LoggerFactory.getLogger(BankTransactionalHandler::class.java)
-
+class BankTransactionalHandler(
+    private val logger: Logger = LoggerFactory.getLogger(BankTransactionalHandler::class.java)
+) : MessageHandler {
     override fun handle(record: ConsumerRecord<String, Any>, acknowledgment: Acknowledgment) {
         try {
             val message = record.value()
