@@ -4,6 +4,8 @@ import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.protocol.Message
 import org.apache.kafka.common.serialization.StringDeserializer
+import org.example.common.exception.CustomException
+import org.example.common.exception.ErrorCode
 import org.example.consumer.ConsumerFactory
 import org.example.consumer.handler.BankTransactionalHandler
 import org.example.interfaces.MessageHandler
@@ -78,9 +80,9 @@ class KafkaConsumerConfig(
 
                 when(topicName) {
                     "transactions" -> handler = bankTransactionalHandler
-                    // 더 많은 핸들러 매핑...
+                    // 필요한 경우 topic에 대한 핸들러 맵핑
                     else ->{
-                        throw RuntimeException("Topic [$topicName] not supported yet")
+                        throw  CustomException(ErrorCode.FAILED_TO_FIND_TOPIC_HANDLER, topicName)
                     }
                 }
 
@@ -114,12 +116,11 @@ class KafkaConsumerConfig(
 
         container.setupMessageListener(AcknowledgingMessageListener { record, acknowledgment ->
             try {
-                if (acknowledgment != null) {
-                    handler.handle(record, acknowledgment)
-                }
+               handler.handle(record, acknowledgment)
             } catch (e: Exception) {
-                logger.error("Error processing record", e)
-                // TODO 메시지 처리 실패 로직 (재시도나 DLQ 전송 등을 구현)
+                // TODO 만약 메시지에 대해서 에러가 발생하면 어떻게 처리 하면 좋을까??
+                // Seeking기능은 해당 토픽을 처리하는 핸들러가 들어오는 이벤트를 추가적으로 핸들링 할 수 없기 떄문에 해당 컨슈머를 통해서 seeking구현은 무리라고 생각
+                handler.handleDLQ(record, acknowledgment)
             }
         })
 

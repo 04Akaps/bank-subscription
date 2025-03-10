@@ -4,5 +4,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.springframework.kafka.support.Acknowledgment
 
 interface MessageHandler {
-    fun handle(record: ConsumerRecord<String, Any>, acknowledgment: Acknowledgment)
+    fun handle(record: ConsumerRecord<String, Any>, acknowledgment: Acknowledgment?)
+    fun handleDLQ(record: ConsumerRecord<String, Any>, acknowledgment: Acknowledgment?)
 }
