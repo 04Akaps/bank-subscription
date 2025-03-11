@@ -1,15 +1,11 @@
 package org.example.config
 
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.common.protocol.Message
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.example.common.exception.CustomException
 import org.example.common.exception.ErrorCode
-import org.example.consumer.ConsumerFactory
 import org.example.consumer.handler.BankTransactionalHandler
 import org.example.interfaces.MessageHandler
-import org.example.types.dto.KafkaTopicMaps
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -20,7 +16,6 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.listener.AcknowledgingMessageListener
 import org.springframework.kafka.listener.ContainerProperties
-import org.springframework.kafka.support.Acknowledgment
 import org.springframework.kafka.support.serializer.JsonDeserializer
 
 @EnableKafka

@@ -1,7 +1,10 @@
 package org.example.consumer.handler
 
+import kotlinx.serialization.SerializationException
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.example.common.json.JsonUtil
 import org.example.interfaces.MessageHandler
+import org.example.types.dto.TransactionsMessage
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.kafka.support.Acknowledgment
@@ -18,15 +21,25 @@ class BankTransactionalHandler(
 
         acknowledgment?.let { it
             try {
-                val message = record.value()
-                logger.info("Received Order message: {}", message)
+                val rawMessage = record.value()
+                logger.info("Received Order message: {}", rawMessage)
 
-                // 메시지 처리 로직 진행
+                try {
+                    val messageStr = when (rawMessage) {
+                        is String -> rawMessage
+                        else -> rawMessage.toString()
+                    }
 
-//            it.acknowledge() // commit
-                logger.info("Order message processed successfully and acknowledged")
+                    val eventData = JsonUtil.decodeFromJson(messageStr, TransactionsMessage.serializer())
+                    logger.info("message processed successfully and acknowledged")
+                } catch (e: SerializationException) {
+                    logger.warn("Failed to deserialize message to TransactionsMessage: {}", e.message)
+                } finally {
+                    it.acknowledge()
+                }
+
             } catch (e: Exception) {
-                logger.error("Error processing Order message", e)
+                logger.error("Error processing message", e)
             }
         }?: run {
             logger.info("Acknowledgment was not found")
