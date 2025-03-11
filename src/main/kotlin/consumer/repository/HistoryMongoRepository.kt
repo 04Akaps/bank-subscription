@@ -1,7 +1,7 @@
 package org.example.consumer.repository
 
 import org.example.config.MongoTableCollector
-import org.example.types.dto.TransactionsMessage
+import org.example.types.entity.HistoryDoc
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.stereotype.Repository
 
@@ -10,9 +10,10 @@ class TransactionHandlerRepository(
     private val template: HashMap<String, MongoTemplate>,
 ) {
 
+    fun saveTransactionHistory(eventData : HistoryDoc) {
+        val template = template(MongoTableCollector.Bank)
 
-    fun saveTransactionHistory(eventData : TransactionsMessage) {
-
+        template.save(eventData)
     }
 
     private fun template(c: MongoTableCollector) : MongoTemplate {
